@@ -3,136 +3,155 @@ import json
 import os
 from datetime import datetime
 
+# Caminho para o banco de dados
 DB_PATH = "ingredientes_db.json"
 
-# Inicializa o banco se não existir
+# Inicializa banco de dados se não existir
 if not os.path.exists(DB_PATH):
     with open(DB_PATH, "w") as f:
         json.dump([], f)
 
-# Funções auxiliares
+# Função para carregar dados
 def carregar_dados():
     with open(DB_PATH, "r") as f:
         return json.load(f)
 
-def salvar_dados(dados):
+# Função para salvar dados
+def salvar_dados(data):
     with open(DB_PATH, "w") as f:
-        json.dump(dados, f, indent=4)
+        json.dump(data, f, indent=4)
 
-def limpar_campos():
-    st.session_state.clear()
-
-def atualizar_produto(index, novos_dados):
-    dados = carregar_dados()
-    dados[index] = novos_dados
-    salvar_dados(dados)
-
-def excluir_produto(index):
-    dados = carregar_dados()
-    dados.pop(index)
-    salvar_dados(dados)
-
-# Carrega banco para sugestões
-dados = carregar_dados()
-produtos_anteriores = sorted(list(set([d["produto"] for d in dados])))
-subprodutos_anteriores = sorted(list(set([d["subproduto"] for d in dados])))
-marcas_anteriores = sorted(list(set([d["marca"] for d in dados])))
-nomes_comerciais_anteriores = sorted(list(set([d["nome_comercial"] for d in dados])))
-
-# Filtros fixos
-st.sidebar.title("Filtros")
-filtro_uso = st.sidebar.selectbox("Filtrar por uso", ["Todos", "interno", "venda"])
-filtro_categoria = st.sidebar.selectbox("Filtrar por categoria", ["Todos", "bebida", "alimento", "outros"])
-filtro_produto = st.sidebar.selectbox("Filtrar por produto", ["Todos"] + produtos_anteriores)
-filtro_subproduto = st.sidebar.selectbox("Filtrar por subproduto", ["Todos"] + subprodutos_anteriores)
-filtro_marca = st.sidebar.selectbox("Filtrar por marca", ["Todos"] + marcas_anteriores)
-
-st.title("Cadastro de Ingredientes")
-
-# Formulário principal
-with st.form("cadastro"):
-    uso = st.selectbox("Uso", ["interno", "venda"])
-    categoria = st.selectbox("Categoria", ["bebida", "alimento", "outros"])
-    produto = st.selectbox("Produto", produtos_anteriores + ["Outro"], key="produto")
-    if produto == "Outro":
-        produto = st.text_input("Digite o novo produto", key="novo_produto")
-
-    subproduto = st.selectbox("Subproduto", subprodutos_anteriores + ["Outro"], key="subproduto")
-    if subproduto == "Outro":
-        subproduto = st.text_input("Digite o novo subproduto", key="novo_subproduto")
-
-    marca = st.selectbox("Marca", marcas_anteriores + ["Outro"], key="marca")
-    if marca == "Outro":
-        marca = st.text_input("Digite a nova marca", key="nova_marca")
-
-    nome_comercial = st.selectbox("Nome Comercial", nomes_comerciais_anteriores + ["Outro"], key="nome_comercial")
-    if nome_comercial == "Outro":
-        nome_comercial = st.text_input("Digite o novo nome comercial", key="novo_nome_comercial")
-
-    quantidade = st.number_input("Quantidade", min_value=0.0, step=0.1)
-    unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"])
-    valor_total = st.number_input("Valor Total (R$)", min_value=0.0, step=0.01)
-
-    submitted = st.form_submit_button("Salvar")
-
-    if submitted:
-        novo_ingrediente = {
-            "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "uso": uso,
-            "categoria": categoria,
-            "produto": produto,
-            "subproduto": subproduto,
-            "marca": marca,
-            "nome_comercial": nome_comercial,
-            "quantidade": quantidade,
-            "unidade": unidade,
-            "valor_total": valor_total
-        }
-        dados.append(novo_ingrediente)
-        salvar_dados(dados)
-        st.success("Ingrediente salvo com sucesso!")
-        limpar_campos()
-
-# Visualização
-st.subheader("Ingredientes Cadastrados")
+# Carrega os dados existentes
 dados = carregar_dados()
 
-# Aplica filtros
-if filtro_uso != "Todos":
-    dados = [d for d in dados if d["uso"] == filtro_uso]
-if filtro_categoria != "Todos":
-    dados = [d for d in dados if d["categoria"] == filtro_categoria]
-if filtro_produto != "Todos":
-    dados = [d for d in dados if d["produto"] == filtro_produto]
-if filtro_subproduto != "Todos":
-    dados = [d for d in dados if d["subproduto"] == filtro_subproduto]
-if filtro_marca != "Todos":
-    dados = [d for d in dados if d["marca"] == filtro_marca]
+# Obter listas únicas para sugestões
+def obter_opcoes(campo):
+    return sorted(list(set(d[campo] for d in dados if campo in d and d[campo])))
 
-# Exibe os dados
-for i, item in enumerate(dados):
-    with st.expander(f"{item['produto']} - {item['nome_comercial']}"):
-        st.write(f"**Data:** {item['data']}")
-        st.write(f"**Uso:** {item['uso']}")
-        st.write(f"**Categoria:** {item['categoria']}")
-        st.write(f"**Subproduto:** {item['subproduto']}")
-        st.write(f"**Marca:** {item['marca']}")
-        st.write(f"**Quantidade:** {item['quantidade']} {item['unidade']}")
-        st.write(f"**Valor Total:** R$ {item['valor_total']:.2f}")
+# Menu principal
+st.sidebar.title("Menu")
+opcao = st.sidebar.radio("Escolha uma opção:", ["Cadastrar Ingrediente", "Visualizar Ingredientes", "Editar/Excluir Ingredientes"])
 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button(f"📝 Editar", key=f"edit_{i}"):
-                st.warning("Função de edição será implementada em breve!")
+# Cadastro
+if opcao == "Cadastrar Ingrediente":
+    st.header("Cadastro de Ingrediente")
 
-        with col2:
-            if st.button(f"🗑️ Excluir", key=f"delete_{i}"):
-                if st.confirm(f"Tem certeza que deseja excluir {item['produto']} - {item['nome_comercial']}?", key=f"confirma_{i}"):
-                    excluir_produto(i)
-                    st.success("Ingrediente excluído com sucesso.")
+    with st.form("cadastro_form"):
+        uso = st.selectbox("Uso", ["Interno", "Venda"])
+        categoria = st.selectbox("Categoria", ["Bebida", "Alimento", "Outros"])
+        produto = st.text_input("Produto", value="", placeholder="Ex: Vinho", autocomplete=True)
+        subproduto = st.text_input("Subproduto", value="", placeholder="Ex: Tinto", autocomplete=True)
+        marca = st.text_input("Marca", value="", placeholder="Ex: Miolo", autocomplete=True)
+        nome_comercial = st.text_input("Nome Comercial", value="", placeholder="Ex: Reserva", autocomplete=True)
+        quantidade = st.number_input("Quantidade", min_value=0.0, step=0.1)
+        unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"])
+        valor_total = st.number_input("Valor Total (R$)", min_value=0.0, step=0.01)
+        submitted = st.form_submit_button("Salvar")
+
+        if submitted:
+            novo = {
+                "data": datetime.today().strftime("%Y-%m-%d %H:%M"),
+                "uso": uso,
+                "categoria": categoria,
+                "produto": produto,
+                "subproduto": subproduto,
+                "marca": marca,
+                "nome_comercial": nome_comercial,
+                "quantidade": quantidade,
+                "unidade": unidade,
+                "valor_total": valor_total
+            }
+            dados.append(novo)
+            salvar_dados(dados)
+            st.success("Ingrediente salvo com sucesso!")
+            st.experimental_rerun()
+
+# Visualização com filtros fixos
+elif opcao == "Visualizar Ingredientes":
+    st.header("Lista de Ingredientes")
+
+    st.subheader("Filtros")
+    filtro_categoria = st.multiselect("Categoria", options=obter_opcoes("categoria"))
+    filtro_produto = st.multiselect("Produto", options=obter_opcoes("produto"))
+
+    filtrados = dados
+    if filtro_categoria:
+        filtrados = [d for d in filtrados if d["categoria"] in filtro_categoria]
+    if filtro_produto:
+        filtrados = [d for d in filtrados if d["produto"] in filtro_produto]
+
+    if filtrados:
+        st.dataframe(filtrados, use_container_width=True)
+    else:
+        st.info("Nenhum ingrediente encontrado com os filtros selecionados.")
+
+# Edição e exclusão
+elif opcao == "Editar/Excluir Ingredientes":
+    st.header("Editar ou Excluir Ingredientes")
+
+    for idx, item in enumerate(dados):
+        with st.expander(f"{item['produto']} - {item['subproduto']} - {item['marca']}"):
+            col1, col2, col3 = st.columns([1, 1, 2])
+            with col1:
+                if st.button("Editar", key=f"editar_{idx}"):
+                    st.session_state["editar_idx"] = idx
+                    st.experimental_rerun()
+            with col2:
+                if st.button("Excluir", key=f"excluir_{idx}"):
+                    st.session_state["confirmar_exclusao"] = idx
                     st.experimental_rerun()
 
-# Atualização automática - instrução
-st.markdown("---")
-st.markdown("✅ **Após salvar este arquivo no GitHub, a publicação no Streamlit Cloud é atualizada automaticamente.**")
+    # Edição
+    if "editar_idx" in st.session_state:
+        idx = st.session_state["editar_idx"]
+        item = dados[idx]
+        st.subheader("Editar Ingrediente")
+
+        with st.form("editar_form"):
+            uso = st.selectbox("Uso", ["Interno", "Venda"], index=["Interno", "Venda"].index(item["uso"]))
+            categoria = st.selectbox("Categoria", ["Bebida", "Alimento", "Outros"], index=["Bebida", "Alimento", "Outros"].index(item["categoria"]))
+            produto = st.text_input("Produto", value=item["produto"])
+            subproduto = st.text_input("Subproduto", value=item["subproduto"])
+            marca = st.text_input("Marca", value=item["marca"])
+            nome_comercial = st.text_input("Nome Comercial", value=item["nome_comercial"])
+            quantidade = st.number_input("Quantidade", min_value=0.0, value=item["quantidade"], step=0.1)
+            unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"], index=["Kg", "g", "ml", "un"].index(item["unidade"]))
+            valor_total = st.number_input("Valor Total (R$)", min_value=0.0, value=item["valor_total"], step=0.01)
+            atualizado = st.form_submit_button("Atualizar")
+
+            if atualizado:
+                dados[idx] = {
+                    **item,
+                    "uso": uso,
+                    "categoria": categoria,
+                    "produto": produto,
+                    "subproduto": subproduto,
+                    "marca": marca,
+                    "nome_comercial": nome_comercial,
+                    "quantidade": quantidade,
+                    "unidade": unidade,
+                    "valor_total": valor_total
+                }
+                salvar_dados(dados)
+                del st.session_state["editar_idx"]
+                st.success("Ingrediente atualizado com sucesso!")
+                st.experimental_rerun()
+
+    # Exclusão com confirmação
+    if "confirmar_exclusao" in st.session_state:
+        idx = st.session_state["confirmar_exclusao"]
+        item = dados[idx]
+        st.warning(f"Tem certeza que deseja excluir o ingrediente: {item['produto']} - {item['marca']}?")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Confirmar Exclusão"):
+                dados.pop(idx)
+                salvar_dados(dados)
+                del st.session_state["confirmar_exclusao"]
+                st.success("Ingrediente excluído com sucesso!")
+                st.experimental_rerun()
+        with col2:
+            if st.button("Cancelar"):
+                del st.session_state["confirmar_exclusao"]
+                st.experimental_rerun()
 
