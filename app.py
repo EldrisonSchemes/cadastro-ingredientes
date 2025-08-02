@@ -2,11 +2,10 @@ import streamlit as st
 import json
 import os
 from datetime import datetime
-from uuid import uuid4
 
 DB_PATH = "ingredientes_db.json"
 
-# Iniciar base de dados se não existir
+# Inicializa o banco se não existir
 if not os.path.exists(DB_PATH):
     with open(DB_PATH, "w") as f:
         json.dump([], f)
@@ -20,92 +19,120 @@ def salvar_dados(dados):
     with open(DB_PATH, "w") as f:
         json.dump(dados, f, indent=4)
 
-def sugestoes_campo(campo):
-    return list({item.get(campo, "") for item in dados if item.get(campo)})
-
 def limpar_campos():
     st.session_state.clear()
 
-# Layout
-st.set_page_config(page_title="Cadastro de Ingredientes", layout="wide")
-menu = st.sidebar.radio("Menu", ["Cadastrar Ingrediente", "Visualizar Ingredientes"])
+def atualizar_produto(index, novos_dados):
+    dados = carregar_dados()
+    dados[index] = novos_dados
+    salvar_dados(dados)
 
+def excluir_produto(index):
+    dados = carregar_dados()
+    dados.pop(index)
+    salvar_dados(dados)
+
+# Carrega banco para sugestões
+dados = carregar_dados()
+produtos_anteriores = sorted(list(set([d["produto"] for d in dados])))
+subprodutos_anteriores = sorted(list(set([d["subproduto"] for d in dados])))
+marcas_anteriores = sorted(list(set([d["marca"] for d in dados])))
+nomes_comerciais_anteriores = sorted(list(set([d["nome_comercial"] for d in dados])))
+
+# Filtros fixos
+st.sidebar.title("Filtros")
+filtro_uso = st.sidebar.selectbox("Filtrar por uso", ["Todos", "interno", "venda"])
+filtro_categoria = st.sidebar.selectbox("Filtrar por categoria", ["Todos", "bebida", "alimento", "outros"])
+filtro_produto = st.sidebar.selectbox("Filtrar por produto", ["Todos"] + produtos_anteriores)
+filtro_subproduto = st.sidebar.selectbox("Filtrar por subproduto", ["Todos"] + subprodutos_anteriores)
+filtro_marca = st.sidebar.selectbox("Filtrar por marca", ["Todos"] + marcas_anteriores)
+
+st.title("Cadastro de Ingredientes")
+
+# Formulário principal
+with st.form("cadastro"):
+    uso = st.selectbox("Uso", ["interno", "venda"])
+    categoria = st.selectbox("Categoria", ["bebida", "alimento", "outros"])
+    produto = st.selectbox("Produto", produtos_anteriores + ["Outro"], key="produto")
+    if produto == "Outro":
+        produto = st.text_input("Digite o novo produto", key="novo_produto")
+
+    subproduto = st.selectbox("Subproduto", subprodutos_anteriores + ["Outro"], key="subproduto")
+    if subproduto == "Outro":
+        subproduto = st.text_input("Digite o novo subproduto", key="novo_subproduto")
+
+    marca = st.selectbox("Marca", marcas_anteriores + ["Outro"], key="marca")
+    if marca == "Outro":
+        marca = st.text_input("Digite a nova marca", key="nova_marca")
+
+    nome_comercial = st.selectbox("Nome Comercial", nomes_comerciais_anteriores + ["Outro"], key="nome_comercial")
+    if nome_comercial == "Outro":
+        nome_comercial = st.text_input("Digite o novo nome comercial", key="novo_nome_comercial")
+
+    quantidade = st.number_input("Quantidade", min_value=0.0, step=0.1)
+    unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"])
+    valor_total = st.number_input("Valor Total (R$)", min_value=0.0, step=0.01)
+
+    submitted = st.form_submit_button("Salvar")
+
+    if submitted:
+        novo_ingrediente = {
+            "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "uso": uso,
+            "categoria": categoria,
+            "produto": produto,
+            "subproduto": subproduto,
+            "marca": marca,
+            "nome_comercial": nome_comercial,
+            "quantidade": quantidade,
+            "unidade": unidade,
+            "valor_total": valor_total
+        }
+        dados.append(novo_ingrediente)
+        salvar_dados(dados)
+        st.success("Ingrediente salvo com sucesso!")
+        limpar_campos()
+
+# Visualização
+st.subheader("Ingredientes Cadastrados")
 dados = carregar_dados()
 
-if menu == "Cadastrar Ingrediente":
-    st.title("📦 Cadastro de Ingredientes")
+# Aplica filtros
+if filtro_uso != "Todos":
+    dados = [d for d in dados if d["uso"] == filtro_uso]
+if filtro_categoria != "Todos":
+    dados = [d for d in dados if d["categoria"] == filtro_categoria]
+if filtro_produto != "Todos":
+    dados = [d for d in dados if d["produto"] == filtro_produto]
+if filtro_subproduto != "Todos":
+    dados = [d for d in dados if d["subproduto"] == filtro_subproduto]
+if filtro_marca != "Todos":
+    dados = [d for d in dados if d["marca"] == filtro_marca]
 
-    with st.form("formulario", clear_on_submit=False):
-        uso = st.selectbox("Uso", ["Interno", "Venda"], key="uso")
-        categoria = st.selectbox("Categoria", ["Alimento", "Bebida", "Outros"], key="categoria")
-        produto = st.text_input("Produto", key="produto", placeholder="Ex: Vinho", value="", autocomplete=True)
-        subproduto = st.text_input("Subproduto", key="subproduto", placeholder="Ex: Tinto Seco")
-        marca = st.text_input("Marca", key="marca", placeholder="Ex: Miolo")
-        nome = st.text_input("Nome Comercial", key="nome", placeholder="Ex: Miolo Seleção 750ml")
-        quantidade = st.number_input("Quantidade", min_value=0.0, format="%.2f", step=0.1)
-        unidade = st.selectbox("Unidade", ["kg", "g", "ml", "un"])
-        valor_total = st.number_input("Valor Total (R$)", min_value=0.0, format="%.2f", step=0.1)
+# Exibe os dados
+for i, item in enumerate(dados):
+    with st.expander(f"{item['produto']} - {item['nome_comercial']}"):
+        st.write(f"**Data:** {item['data']}")
+        st.write(f"**Uso:** {item['uso']}")
+        st.write(f"**Categoria:** {item['categoria']}")
+        st.write(f"**Subproduto:** {item['subproduto']}")
+        st.write(f"**Marca:** {item['marca']}")
+        st.write(f"**Quantidade:** {item['quantidade']} {item['unidade']}")
+        st.write(f"**Valor Total:** R$ {item['valor_total']:.2f}")
 
-        submitted = st.form_submit_button("Salvar")
-        if submitted:
-            novo = {
-                "id": str(uuid4()),
-                "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "uso": uso,
-                "categoria": categoria,
-                "produto": produto.strip(),
-                "subproduto": subproduto.strip(),
-                "marca": marca.strip(),
-                "nome": nome.strip(),
-                "quantidade": quantidade,
-                "unidade": unidade,
-                "valor_total": valor_total
-            }
-            dados.append(novo)
-            salvar_dados(dados)
-            st.success("Ingrediente salvo com sucesso!")
-            limpar_campos()
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button(f"📝 Editar", key=f"edit_{i}"):
+                st.warning("Função de edição será implementada em breve!")
 
-elif menu == "Visualizar Ingredientes":
-    st.title("📊 Ingredientes Cadastrados")
-
-    # Filtros
-    col1, col2, col3, col4, col5 = st.columns(5)
-    uso_filtro = col1.selectbox("Filtrar por Uso", ["Todos"] + list(sorted({i["uso"] for i in dados})))
-    categoria_filtro = col2.selectbox("Filtrar por Categoria", ["Todos"] + list(sorted({i["categoria"] for i in dados})))
-    produto_filtro = col3.selectbox("Filtrar por Produto", ["Todos"] + list(sorted({i["produto"] for i in dados})))
-    subproduto_filtro = col4.selectbox("Filtrar por Subproduto", ["Todos"] + list(sorted({i["subproduto"] for i in dados if i.get("subproduto")})))
-    marca_filtro = col5.selectbox("Filtrar por Marca", ["Todos"] + list(sorted({i["marca"] for i in dados if i.get("marca")})))
-
-    # Aplicar filtros
-    filtrados = dados
-    if uso_filtro != "Todos":
-        filtrados = [i for i in filtrados if i["uso"] == uso_filtro]
-    if categoria_filtro != "Todos":
-        filtrados = [i for i in filtrados if i["categoria"] == categoria_filtro]
-    if produto_filtro != "Todos":
-        filtrados = [i for i in filtrados if i["produto"] == produto_filtro]
-    if subproduto_filtro != "Todos":
-        filtrados = [i for i in filtrados if i["subproduto"] == subproduto_filtro]
-    if marca_filtro != "Todos":
-        filtrados = [i for i in filtrados if i["marca"] == marca_filtro]
-
-    for item in filtrados:
-        with st.expander(f"{item['produto']} - {item['nome']}"):
-            st.write(f"📅 Data: `{item['data']}`")
-            st.write(f"🔸 Uso: **{item['uso']}**")
-            st.write(f"🔸 Categoria: **{item['categoria']}**")
-            st.write(f"🔸 Subproduto: {item['subproduto']}")
-            st.write(f"🔸 Marca: {item['marca']}")
-            st.write(f"🔸 Quantidade: **{item['quantidade']} {item['unidade']}**")
-            st.write(f"🔸 Valor Total: **R$ {item['valor_total']:.2f}**")
-
-            col_ed, col_exc = st.columns(2)
-            if col_ed.button("✏️ Editar", key=f"edit_{item['id']}"):
-                st.warning("Edição ainda em construção. Em breve disponível.")
-            if col_exc.button("🗑️ Excluir", key=f"del_{item['id']}"):
-                if st.confirm("Tem certeza que deseja excluir?"):
-                    dados = [d for d in dados if d["id"] != item["id"]]
-                    salvar_dados(dados)
-                    st.success("Ingrediente excluído.")
+        with col2:
+            if st.button(f"🗑️ Excluir", key=f"delete_{i}"):
+                if st.confirm(f"Tem certeza que deseja excluir {item['produto']} - {item['nome_comercial']}?", key=f"confirma_{i}"):
+                    excluir_produto(i)
+                    st.success("Ingrediente excluído com sucesso.")
                     st.experimental_rerun()
+
+# Atualização automática - instrução
+st.markdown("---")
+st.markdown("✅ **Após salvar este arquivo no GitHub, a publicação no Streamlit Cloud é atualizada automaticamente.**")
+
