@@ -1,135 +1,140 @@
 import streamlit as st
-import pandas as pd
+import json
 import os
+import uuid
 
-# Caminho do arquivo de dados
-ARQUIVO_DADOS = "ingredientes.csv"
+DB_FILE = "ingredientes_db.json"
 
-# Função para carregar os dados
+# Função para carregar dados
 def carregar_dados():
-    if os.path.exists(ARQUIVO_DADOS):
-        return pd.read_csv(ARQUIVO_DADOS)
-    else:
-        return pd.DataFrame(columns=[
-            "Uso", "Categoria", "Produto", "Marca", "Nome Comercial",
-            "Subproduto", "Quantidade", "Unidade", "Valor Total"
-        ])
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
 
-# Função para salvar os dados
-def salvar_dados(df):
-    df.to_csv(ARQUIVO_DADOS, index=False)
+# Função para salvar dados
+def salvar_dados(dados):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
 
-# Função para limpar campos
-def limpar_campos():
-    st.session_state.clear()
+# Inicializa dados
+ingredientes = carregar_dados()
 
-# Título
-st.title("📦 Cadastro de Ingredientes")
+st.set_page_config(page_title="Cadastro de Ingredientes", layout="wide")
 
-# Menu lateral
-menu = st.sidebar.radio("Navegação", ["Cadastro", "Lista completa", "Buscar", "Editar", "Excluir"])
-
-# Carrega os dados
-df = carregar_dados()
+# Barra lateral
+menu = st.sidebar.radio("Menu", ["Cadastro", "Lista Completa", "Buscar Ingredientes"])
 
 # Cadastro de ingredientes
 if menu == "Cadastro":
-    st.subheader("Adicionar Ingrediente")
+    st.title("Cadastro de Ingredientes")
 
-    # Sugestões baseadas nos dados já existentes
-    sugestoes_produto = df['Produto'].dropna().unique().tolist()
-    sugestoes_marca = df['Marca'].dropna().unique().tolist()
-    sugestoes_subproduto = df['Subproduto'].dropna().unique().tolist()
-
-    with st.form("form_cadastro"):
+    with st.form("cadastro_ingrediente", clear_on_submit=True):
         uso = st.selectbox("Uso", ["Interno", "Venda"])
-        categoria = st.selectbox("Categoria", ["Bebida", "Alimento", "Outros"])
+        categoria = st.selectbox("Categoria", ["Alimento", "Bebida", "Outros"])
         produto = st.text_input("Produto", placeholder="Ex: Vinho")
-        marca = st.text_input("Marca")
-        nome_comercial = st.text_input("Nome Comercial")
-        subproduto = st.text_input("Subproduto")
-        quantidade = st.number_input("Quantidade", min_value=0.0, format="%.2f")
+        subproduto = st.text_input("Subproduto", placeholder="Ex: Merlot")
+        marca = st.text_input("Marca", placeholder="Ex: Miolo")
+        nome_comercial = st.text_input("Nome Comercial", placeholder="Ex: Miolo Reserva 2020")
         unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"])
-        valor_total = st.number_input("Valor Total", min_value=0.0, format="%.2f")
+        
+        if unidade in ["Kg", "un"]:
+            quantidade = st.number_input("Quantidade", min_value=0, step=1, format="%d")
+        else:
+            quantidade = st.number_input("Quantidade", min_value=0.0, step=0.01, format="%.2f")
+        
+        valor_total = st.number_input("Valor Total (R$)", min_value=0.0, step=0.01, format="%.2f")
+        submit = st.form_submit_button("Salvar")
 
-        submitted = st.form_submit_button("Salvar")
-        if submitted:
-            novo = pd.DataFrame([{
-                "Uso": uso,
-                "Categoria": categoria,
-                "Produto": produto,
-                "Marca": marca,
-                "Nome Comercial": nome_comercial,
-                "Subproduto": subproduto,
-                "Quantidade": quantidade,
-                "Unidade": unidade,
-                "Valor Total": valor_total
-            }])
-            df = pd.concat([df, novo], ignore_index=True)
-            salvar_dados(df)
+        if submit:
+            novo_item = {
+                "id": str(uuid.uuid4()),
+                "uso": uso,
+                "categoria": categoria,
+                "produto": produto,
+                "subproduto": subproduto,
+                "marca": marca,
+                "nome_comercial": nome_comercial,
+                "quantidade": quantidade,
+                "unidade": unidade,
+                "valor_total": valor_total
+            }
+
+            ingredientes.append(novo_item)
+            salvar_dados(ingredientes)
             st.success("Ingrediente salvo com sucesso!")
-            limpar_campos()
+            st.experimental_rerun()
 
-# Lista com filtros fixos visíveis
-elif menu == "Lista completa":
-    st.subheader("Estoque de Ingredientes")
+# Lista completa
+elif menu == "Lista Completa":
+    st.title("Lista de Ingredientes")
 
-    # Filtros fixos
-    col1, col2 = st.columns(2)
+    # Filtros fixos na parte superior da página
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        filtro_categoria = st.selectbox("Filtrar por categoria", ["Todos"] + df["Categoria"].dropna().unique().tolist())
+        filtro_uso = st.selectbox("Uso", ["Todos"] + sorted(list(set(i["uso"] for i in ingredientes))))
     with col2:
-        filtro_produto = st.selectbox("Filtrar por produto", ["Todos"] + df["Produto"].dropna().unique().tolist())
+        filtro_categoria = st.selectbox("Categoria", ["Todos"] + sorted(list(set(i["categoria"] for i in ingredientes))))
+    with col3:
+        filtro_produto = st.selectbox("Produto", ["Todos"] + sorted(list(set(i["produto"] for i in ingredientes))))
+    with col4:
+        filtro_subproduto = st.selectbox("Subproduto", ["Todos"] + sorted(list(set(i["subproduto"] for i in ingredientes if i["subproduto"] != ""))))
+    with col5:
+        filtro_marca = st.selectbox("Marca", ["Todos"] + sorted(list(set(i["marca"] for i in ingredientes if i["marca"] != ""))))
 
-    dados_filtrados = df.copy()
+    busca = st.text_input("Buscar por nome comercial, produto ou marca:")
+
+    # Aplicar filtros
+    ingredientes_filtrados = ingredientes
+    if filtro_uso != "Todos":
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["uso"] == filtro_uso]
     if filtro_categoria != "Todos":
-        dados_filtrados = dados_filtrados[dados_filtrados["Categoria"] == filtro_categoria]
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["categoria"] == filtro_categoria]
     if filtro_produto != "Todos":
-        dados_filtrados = dados_filtrados[dados_filtrados["Produto"] == filtro_produto]
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["produto"] == filtro_produto]
+    if filtro_subproduto != "Todos":
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["subproduto"] == filtro_subproduto]
+    if filtro_marca != "Todos":
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["marca"] == filtro_marca]
+    if busca:
+        ingredientes_filtrados = [
+            i for i in ingredientes_filtrados
+            if busca.lower() in i["nome_comercial"].lower()
+            or busca.lower() in i["produto"].lower()
+            or busca.lower() in i["marca"].lower()
+        ]
 
-    st.dataframe(dados_filtrados, use_container_width=True)
+    for item in ingredientes_filtrados:
+        with st.expander(f'{item["nome_comercial"]} ({item["quantidade"]} {item["unidade"]})'):
+            st.write(f"**Uso:** {item['uso']}")
+            st.write(f"**Categoria:** {item['categoria']}")
+            st.write(f"**Produto:** {item['produto']}")
+            st.write(f"**Subproduto:** {item['subproduto']}")
+            st.write(f"**Marca:** {item['marca']}")
+            st.write(f"**Quantidade:** {item['quantidade']} {item['unidade']}")
+            st.write(f"**Valor Total:** R$ {item['valor_total']:.2f}")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(f"Editar {item['id']}", key="edit_"+item["id"]):
+                    st.warning("Funcionalidade de edição será implementada em breve.")
+            with col2:
+                if st.button(f"Excluir", key="del_"+item["id"]):
+                    if st.confirm(f"Tem certeza que deseja excluir '{item['nome_comercial']}'?"):
+                        ingredientes = [i for i in ingredientes if i["id"] != item["id"]]
+                        salvar_dados(ingredientes)
+                        st.success("Ingrediente excluído com sucesso.")
+                        st.experimental_rerun()
 
 # Buscar ingredientes
-elif menu == "Buscar":
-    st.subheader("🔍 Buscar Ingredientes")
-    termo = st.text_input("Digite o nome do produto ou marca para buscar:")
+elif menu == "Buscar Ingredientes":
+    st.title("Buscar Ingredientes")
+    termo = st.text_input("Digite algo para buscar...")
+
     if termo:
-        resultado = df[df.apply(lambda row: termo.lower() in row.astype(str).str.lower().to_string(), axis=1)]
-        st.dataframe(resultado)
-
-# Editar ingredientes
-elif menu == "Editar":
-    st.subheader("✏️ Editar Ingredientes")
-    index = st.number_input("Digite o número da linha para editar:", min_value=0, max_value=len(df)-1, step=1)
-    if len(df) > 0:
-        st.write("Ingrediente atual:")
-        st.write(df.iloc[index])
-
-        with st.form("form_edicao"):
-            uso = st.selectbox("Uso", ["Interno", "Venda"], index=["Interno", "Venda"].index(df.iloc[index]["Uso"]))
-            categoria = st.selectbox("Categoria", ["Bebida", "Alimento", "Outros"], index=["Bebida", "Alimento", "Outros"].index(df.iloc[index]["Categoria"]))
-            produto = st.text_input("Produto", value=df.iloc[index]["Produto"])
-            marca = st.text_input("Marca", value=df.iloc[index]["Marca"])
-            nome_comercial = st.text_input("Nome Comercial", value=df.iloc[index]["Nome Comercial"])
-            subproduto = st.text_input("Subproduto", value=df.iloc[index]["Subproduto"])
-            quantidade = st.number_input("Quantidade", value=float(df.iloc[index]["Quantidade"]), format="%.2f")
-            unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"], index=["Kg", "g", "ml", "un"].index(df.iloc[index]["Unidade"]))
-            valor_total = st.number_input("Valor Total", value=float(df.iloc[index]["Valor Total"]), format="%.2f")
-
-            editar = st.form_submit_button("Salvar Alterações")
-            if editar:
-                df.loc[index] = [uso, categoria, produto, marca, nome_comercial, subproduto, quantidade, unidade, valor_total]
-                salvar_dados(df)
-                st.success("Ingrediente editado com sucesso!")
-
-# Excluir ingrediente
-elif menu == "Excluir":
-    st.subheader("🗑️ Excluir Ingredientes")
-    index = st.number_input("Digite o número da linha para excluir:", min_value=0, max_value=len(df)-1, step=1)
-    if len(df) > 0:
-        st.write("Ingrediente selecionado:")
-        st.write(df.iloc[index])
-        if st.button("Confirmar Exclusão"):
-            df = df.drop(index).reset_index(drop=True)
-            salvar_dados(df)
-            st.success("Ingrediente excluído com sucesso!")
+        resultados = [i for i in ingredientes if termo.lower() in json.dumps(i).lower()]
+        if resultados:
+            for item in resultados:
+                st.markdown(f"- **{item['nome_comercial']}** ({item['quantidade']} {item['unidade']}) - {item['marca']}")
+        else:
+            st.warning("Nenhum ingrediente encontrado.")
