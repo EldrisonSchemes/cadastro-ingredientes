@@ -141,4 +141,4 @@ menu = st.sidebar.selectbox("Menu", ["Cadastro", "Lista Completa"])
 if menu == "Cadastro":
     adicionar_item()
 elif menu == "Lista Completa":
-
+    listar_completa()
