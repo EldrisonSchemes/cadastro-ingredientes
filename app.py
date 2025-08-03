@@ -24,7 +24,12 @@ ingredientes = carregar_dados()
 st.set_page_config(page_title="Cadastro de Ingredientes", layout="wide")
 
 # Barra lateral (com "Buscar Ingredientes" removido)
-menu = st.sidebar.radio("Menu", ["Cadastro", "Lista Completa"])
+menu = st.sidebar.selectbox("Menu", [
+    "Cadastro de Ingredientes",
+    "Lista Completa",
+    "Editar Ingrediente",
+    "Excluir Ingrediente"
+])
 
 # Cadastro de ingredientes
 if menu == "Cadastro":
@@ -124,3 +129,64 @@ elif menu == "Lista Completa":
         st.dataframe(df, use_container_width=True)
     else:
         st.info("Nenhum ingrediente encontrado com os filtros selecionados.")
+
+# Edição por ID
+elif menu == "Editar Ingrediente":
+    st.header("Editar Ingrediente por ID")
+
+    id_editar = st.number_input("Informe o ID do ingrediente a editar", min_value=0, step=1)
+
+    ingrediente = next((i for i in ingredientes if i["id"] == id_editar), None)
+
+    if ingrediente:
+        with st.form("form_editar"):
+            novo_uso = st.selectbox("Uso", ["interno", "venda"], index=["interno", "venda"].index(ingrediente["uso"]))
+            nova_categoria = st.selectbox("Categoria", ["bebida", "alimento", "outros"], index=["bebida", "alimento", "outros"].index(ingrediente["categoria"]))
+            novo_produto = st.text_input("Produto", value=ingrediente["produto"])
+            nova_marca = st.text_input("Marca", value=ingrediente["marca"])
+            novo_nome = st.text_input("Nome Comercial", value=ingrediente["nome_comercial"])
+            novo_subproduto = st.text_input("Subproduto", value=ingrediente["subproduto"])
+            nova_quantidade = st.number_input("Quantidade", min_value=0.0, format="%.2f", value=float(ingrediente["quantidade"]))
+            nova_unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"], index=["Kg", "g", "ml", "un"].index(ingrediente["unidade"]))
+            novo_valor_total = st.number_input("Valor Total", min_value=0.0, format="%.2f", value=float(ingrediente["valor_total"]))
+
+            submitted = st.form_submit_button("Salvar Alterações")
+            if submitted:
+                ingrediente.update({
+                    "uso": novo_uso,
+                    "categoria": nova_categoria,
+                    "produto": novo_produto,
+                    "marca": nova_marca,
+                    "nome_comercial": novo_nome,
+                    "subproduto": novo_subproduto,
+                    "quantidade": nova_quantidade,
+                    "unidade": nova_unidade,
+                    "valor_total": novo_valor_total,
+                    "valor_medio": round(novo_valor_total / nova_quantidade, 2) if nova_quantidade > 0 else 0
+                })
+                salvar_dados(ingredientes)
+                st.success("Ingrediente atualizado com sucesso!")
+    else:
+        st.warning("ID não encontrado.")
+
+# Exclusão por ID
+elif menu == "Excluir Ingrediente":
+    st.header("Excluir Ingrediente por ID")
+
+    id_excluir = st.number_input("Informe o ID do ingrediente a excluir", min_value=0, step=1)
+
+    ingrediente = next((i for i in ingredientes if i["id"] == id_excluir), None)
+
+    if ingrediente:
+        st.markdown(f"**Produto:** {ingrediente['nome_comercial']} ({ingrediente['quantidade']} {ingrediente['unidade']})")
+        st.markdown(f"**Valor Médio:** R$ {ingrediente['valor_medio']:.2f}")
+
+        confirmar = st.checkbox("Confirmo a exclusão deste ingrediente")
+
+        if confirmar:
+            if st.button("Excluir definitivamente"):
+                ingredientes = [i for i in ingredientes if i["id"] != id_excluir]
+                salvar_dados(ingredientes)
+                st.success("Ingrediente excluído com sucesso!")
+    else:
+        st.warning("ID não encontrado.")
