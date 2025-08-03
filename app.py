@@ -113,9 +113,9 @@ elif menu == "Lista Completa":
     # Mostrar resultados como tabela (estilo Excel)
     if ingredientes_filtrados:
         df = pd.DataFrame(ingredientes_filtrados)
-        df = df.drop(columns=["id"])  # Oculta o ID na exibição
-        df = df[["nome_comercial", "uso", "categoria", "produto", "subproduto", "marca", "quantidade", "unidade", "valor_total"]]
+        df = df[["id", "nome_comercial", "uso", "categoria", "produto", "subproduto", "marca", "quantidade", "unidade", "valor_total"]]
         df = df.rename(columns={
+            "id": "ID",
             "nome_comercial": "Nome Comercial",
             "uso": "Uso",
             "categoria": "Categoria",
@@ -126,6 +126,7 @@ elif menu == "Lista Completa":
             "unidade": "Unidade",
             "valor_total": "Valor Total (R$)"
         })
+
         st.dataframe(df, use_container_width=True)
     else:
         st.info("Nenhum ingrediente encontrado com os filtros selecionados.")
@@ -133,11 +134,8 @@ elif menu == "Lista Completa":
 # Edição por ID
 elif menu == "Editar Ingrediente":
     st.header("Editar Ingrediente por ID")
-
-    id_editar = st.number_input("Informe o ID do ingrediente a editar", min_value=0, step=1)
-
+    id_editar = st.text_input("Informe o ID do ingrediente a editar")
     ingrediente = next((i for i in ingredientes if i["id"] == id_editar), None)
-
     if ingrediente:
         with st.form("form_editar"):
             novo_uso = st.selectbox("Uso", ["interno", "venda"], index=["interno", "venda"].index(ingrediente["uso"]))
@@ -172,11 +170,8 @@ elif menu == "Editar Ingrediente":
 # Exclusão por ID
 elif menu == "Excluir Ingrediente":
     st.header("Excluir Ingrediente por ID")
-
-    id_excluir = st.number_input("Informe o ID do ingrediente a excluir", min_value=0, step=1)
-
+    id_excluir = st.text_input("Informe o ID do ingrediente a excluir")
     ingrediente = next((i for i in ingredientes if i["id"] == id_excluir), None)
-
     if ingrediente:
         st.markdown(f"**Produto:** {ingrediente['nome_comercial']} ({ingrediente['quantidade']} {ingrediente['unidade']})")
         st.markdown(f"**Valor Médio:** R$ {ingrediente['valor_medio']:.2f}")
