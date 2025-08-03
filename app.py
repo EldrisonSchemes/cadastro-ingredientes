@@ -113,7 +113,7 @@ elif menu == "Lista Completa":
 # Mostrar resultados como tabela (estilo Excel)
 if ingredientes_filtrados:
     df = pd.DataFrame(ingredientes_filtrados)
-    df = df[["id", "nome_comercial", "uso", "categoria", "produto", "subproduto", "marca", "quantidade", "unidade", "valor_total"]]
+    df = df[["nome_comercial", "uso", "categoria", "produto", "subproduto", "marca", "quantidade", "unidade", "valor_total"]]
     df = df.rename(columns={
         "id": "ID",
         "nome_comercial": "Nome Comercial",
@@ -126,7 +126,7 @@ if ingredientes_filtrados:
         "unidade": "Unidade",
         "valor_total": "Valor Total (R$)"
     })
-    df.reset_index(drop=True, inplace=True)  # <-- ESSA LINHA corrige o índice
+    df.index.name = "ID"  # <- Define o índice da tabela como "ID"
     st.dataframe(df, use_container_width=True)
 else:
     st.info("Nenhum ingrediente encontrado com os filtros selecionados.")
