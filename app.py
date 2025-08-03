@@ -21,9 +21,10 @@ def salvar_dados(dados):
 # Inicializa dados
 ingredientes = carregar_dados()
 
+# Configuração da página
 st.set_page_config(page_title="Cadastro de Ingredientes", layout="wide")
 
-# Barra lateral (com "Buscar Ingredientes" removido)
+# Barra lateral
 menu = st.sidebar.radio("Menu", [
     "Cadastro",
     "Lista Completa",
@@ -31,30 +32,32 @@ menu = st.sidebar.radio("Menu", [
     "Excluir Ingrediente"
 ])
 
-# Cadastro de ingredientes
-if menu == "Cadastro":
-    st.title("Cadastro de Ingredientes")
-
-    with st.form("cadastro_ingrediente", clear_on_submit=True):
-        uso = st.selectbox("Uso", ["Interno", "Venda"])
-        categoria = st.selectbox("Categoria", ["Alimento", "Bebida", "Outros"])
-        produto = st.text_input("Produto", placeholder="Ex: Vinho")
-        subproduto = st.text_input("Subproduto", placeholder="Ex: Merlot")
-        marca = st.text_input("Marca", placeholder="Ex: Miolo")
-        nome_comercial = st.text_input("Nome Comercial", placeholder="Ex: Miolo Reserva 2020")
-        unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"])
-
+# Função para exibir formulário (reutilizável para cadastro e edição)
+def exibir_formulario(item=None):
+    if item is None:
+        item = {}
+    
+    with st.form(key="form_ingrediente", clear_on_submit=(item == {})):
+        uso = st.selectbox("Uso", ["Interno", "Venda"], index=0 if not item else ["Interno", "Venda"].index(item.get("uso", "Interno")))
+        categoria = st.selectbox("Categoria", ["Alimento", "Bebida", "Outros"], index=0 if not item else ["Alimento", "Bebida", "Outros"].index(item.get("categoria", "Alimento")))
+        produto = st.text_input("Produto", value=item.get("produto", ""), placeholder="Ex: Vinho")
+        subproduto = st.text_input("Subproduto", value=item.get("subproduto", ""), placeholder="Ex: Merlot")
+        marca = st.text_input("Marca", value=item.get("marca", ""), placeholder="Ex: Miolo")
+        nome_comercial = st.text_input("Nome Comercial", value=item.get("nome_comercial", ""), placeholder="Ex: Miolo Reserva 2020")
+        unidade = st.selectbox("Unidade", ["Kg", "g", "ml", "un"], index=0 if not item else ["Kg", "g", "ml", "un"].index(item.get("unidade", "Kg")))
+        
         if unidade in ["Kg", "un"]:
-            quantidade = st.number_input("Quantidade", min_value=0, step=1, format="%d")
+            quantidade = st.number_input("Quantidade", min_value=0, step=1, format="%d", value=item.get("quantidade", 0))
         else:
-            quantidade = st.number_input("Quantidade", min_value=0.0, step=0.01, format="%.2f")
-
-        valor_total = st.number_input("Valor Total (R$)", min_value=0.0, step=0.01, format="%.2f")
-        submit = st.form_submit_button("Salvar")
-
+            quantidade = st.number_input("Quantidade", min_value=0.0, step=0.01, format="%.2f", value=item.get("quantidade", 0.0))
+            
+        valor_total = st.number_input("Valor Total (R$)", min_value=0.0, step=0.01, format="%.2f", value=item.get("valor_total", 0.0))
+        
+        submit = st.form_submit_button("Salvar" if not item else "Atualizar")
+        
         if submit:
-            novo_item = {
-                "id": str(uuid.uuid4()),
+            return {
+                "id": item.get("id", str(uuid.uuid4())),
                 "uso": uso,
                 "categoria": categoria,
                 "produto": produto,
@@ -65,11 +68,19 @@ if menu == "Cadastro":
                 "unidade": unidade,
                 "valor_total": valor_total
             }
+    return None
 
-            ingredientes.append(novo_item)
-            salvar_dados(ingredientes)
-            st.success("Ingrediente salvo com sucesso!")
-            st.stop()
+# Cadastro de ingredientes
+if menu == "Cadastro":
+    st.title("Cadastro de Ingredientes")
+    
+    novo_item = exibir_formulario()
+    
+    if novo_item:
+        ingredientes.append(novo_item)
+        salvar_dados(ingredientes)
+        st.success("Ingrediente salvo com sucesso!")
+        st.experimental_rerun()
 
 # Lista completa com filtros e visualização estilo tabela
 elif menu == "Lista Completa":
@@ -110,23 +121,67 @@ elif menu == "Lista Completa":
             or busca.lower() in i["marca"].lower()
         ]
 
-# Mostrar resultados como tabela (estilo Excel)
-if ingredientes_filtrados:
-    df = pd.DataFrame(ingredientes_filtrados)
-    df = df[["nome_comercial", "uso", "categoria", "produto", "subproduto", "marca", "quantidade", "unidade", "valor_total"]]
-    df = df.rename(columns={
-        "id": "ID",
-        "nome_comercial": "Nome Comercial",
-        "uso": "Uso",
-        "categoria": "Categoria",
-        "produto": "Produto",
-        "subproduto": "Subproduto",
-        "marca": "Marca",
-        "quantidade": "Quantidade",
-        "unidade": "Unidade",
-        "valor_total": "Valor Total (R$)"
-    })
-    df.index.name = "ID"  # <- Define o índice da tabela como "ID"
-    st.dataframe(df, use_container_width=True)
-else:
-    st.info("Nenhum ingrediente encontrado com os filtros selecionados.")
+    # Mostrar resultados como tabela (estilo Excel)
+    if ingredientes_filtrados:
+        df = pd.DataFrame(ingredientes_filtrados)
+        df = df[["id", "nome_comercial", "uso", "categoria", "produto", "subproduto", "marca", "quantidade", "unidade", "valor_total"]]
+        df = df.rename(columns={
+            "id": "ID",
+            "nome_comercial": "Nome Comercial",
+            "uso": "Uso",
+            "categoria": "Categoria",
+            "produto": "Produto",
+            "subproduto": "Subproduto",
+            "marca": "Marca",
+            "quantidade": "Quantidade",
+            "unidade": "Unidade",
+            "valor_total": "Valor Total (R$)"
+        })
+        st.dataframe(df.set_index("ID"), use_container_width=True)
+    else:
+        st.info("Nenhum ingrediente encontrado com os filtros selecionados.")
+
+# Edição de ingredientes
+elif menu == "Editar Ingrediente":
+    st.title("Editar Ingrediente")
+    
+    if not ingredientes:
+        st.warning("Nenhum ingrediente cadastrado para editar.")
+    else:
+        # Selecionar ingrediente para editar
+        opcoes = [f"{i['nome_comercial']} ({i['marca']}) - {i['produto']}" for i in ingredientes]
+        selecionado = st.selectbox("Selecione o ingrediente para editar:", opcoes)
+        index_selecionado = opcoes.index(selecionado)
+        ingrediente_editar = ingredientes[index_selecionado]
+        
+        # Exibir formulário preenchido
+        item_atualizado = exibir_formulario(ingrediente_editar)
+        
+        if item_atualizado:
+            ingredientes[index_selecionado] = item_atualizado
+            salvar_dados(ingredientes)
+            st.success("Ingrediente atualizado com sucesso!")
+            st.experimental_rerun()
+
+# Exclusão de ingredientes
+elif menu == "Excluir Ingrediente":
+    st.title("Excluir Ingrediente")
+    
+    if not ingredientes:
+        st.warning("Nenhum ingrediente cadastrado para excluir.")
+    else:
+        # Selecionar ingrediente para excluir
+        opcoes = [f"{i['nome_comercial']} ({i['marca']}) - {i['produto']}" for i in ingredientes]
+        selecionado = st.selectbox("Selecione o ingrediente para excluir:", opcoes)
+        index_selecionado = opcoes.index(selecionado)
+        
+        # Mostrar detalhes do item selecionado
+        st.write("Detalhes do item selecionado:")
+        st.json(ingredientes[index_selecionado])
+        
+        # Confirmação de exclusão
+        if st.button("Confirmar Exclusão"):
+            del ingredientes[index_selecionado]
+            salvar_dados(ingredientes)
+            st.success("Ingrediente excluído com sucesso!")
+            st.experimental_rerun()
