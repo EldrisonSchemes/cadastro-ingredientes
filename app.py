@@ -121,10 +121,11 @@ elif menu == "Lista Completa":
     colunas_selecionadas = st.multiselect(
         "Selecione as colunas para exibir:",
         list(colunas_disponiveis.keys()),
-        default=["ID", "Nome Comercial", "Uso", "Categoria", "Produto", "Marca", "Quantidade", "Unidade", "Valor Total (R$)"]
+        default=["ID", "Nome Comercial", "Uso", "Categoria", "Produto", "Subproduto", "Marca", "Quantidade", "Unidade", "Valor Total (R$)"]
     )
 
-    # Filtros
+    # Filtros fixos como solicitado
+    st.subheader("Filtros")
     col1, col2, col3 = st.columns(3)
     with col1:
         filtro_uso = st.selectbox("Uso", ["Todos"] + sorted(list(set(i["uso"] for i in ingredientes))))
@@ -133,7 +134,15 @@ elif menu == "Lista Completa":
     with col3:
         filtro_produto = st.selectbox("Produto", ["Todos"] + sorted(list(set(i["produto"] for i in ingredientes))))
 
-    busca = st.text_input("Buscar por nome comercial, produto ou marca:")
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        filtro_subproduto = st.selectbox("Subproduto", ["Todos"] + sorted(list(set(i["subproduto"] for i in ingredientes if i["subproduto"]))))
+    with col5:
+        filtro_marca = st.selectbox("Marca", ["Todos"] + sorted(list(set(i["marca"] for i in ingredientes if i["marca"]))))
+    with col6:
+        filtro_nome_comercial = st.selectbox("Nome Comercial", ["Todos"] + sorted(list(set(i["nome_comercial"] for i in ingredientes if i["nome_comercial"]))))
+
+    busca = st.text_input("Busca rápida (qualquer campo):")
 
     # Aplicar filtros
     ingredientes_filtrados = ingredientes
@@ -143,12 +152,16 @@ elif menu == "Lista Completa":
         ingredientes_filtrados = [i for i in ingredientes_filtrados if i["categoria"] == filtro_categoria]
     if filtro_produto != "Todos":
         ingredientes_filtrados = [i for i in ingredientes_filtrados if i["produto"] == filtro_produto]
+    if filtro_subproduto != "Todos":
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["subproduto"] == filtro_subproduto]
+    if filtro_marca != "Todos":
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["marca"] == filtro_marca]
+    if filtro_nome_comercial != "Todos":
+        ingredientes_filtrados = [i for i in ingredientes_filtrados if i["nome_comercial"] == filtro_nome_comercial]
     if busca:
         ingredientes_filtrados = [
             i for i in ingredientes_filtrados
-            if busca.lower() in i["nome_comercial"].lower()
-            or busca.lower() in i["produto"].lower()
-            or busca.lower() in i["marca"].lower()
+            if any(busca.lower() in str(v).lower() for v in i.values())
         ]
 
     # Mostrar resultados como tabela
