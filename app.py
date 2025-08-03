@@ -81,7 +81,7 @@ elif menu == "Lista Completa":
     with col4:
         filtro_subproduto = st.selectbox("Subproduto", ["Todos"] + sorted(list(set(i["subproduto"] for i in ingredientes if i["subproduto"] != ""))))
     with col5:
-        filtro_marca = st.selectbox("Marca", ["Todos"] + sorted(list(set(i["marca"] for i in ingredientes if i["marca"] != ""]))))
+        filtro_marca = st.selectbox("Marca", ["Todos"] + sorted(list(set(i["marca"] for i in ingredientes if i["marca"] != ""])))
 
     busca = st.text_input("Buscar por nome comercial, produto ou marca:")
 
