@@ -110,7 +110,7 @@ elif menu == "Lista Completa":
             or busca.lower() in i["marca"].lower()
         ]
 
-    # Mostrar resultados como tabela (estilo Excel)
+# Mostrar resultados como tabela (estilo Excel)
     if ingredientes_filtrados:
         df = pd.DataFrame(ingredientes_filtrados)
         df = df[["id", "nome_comercial", "uso", "categoria", "produto", "subproduto", "marca", "quantidade", "unidade", "valor_total"]]
@@ -126,11 +126,10 @@ elif menu == "Lista Completa":
             "unidade": "Unidade",
             "valor_total": "Valor Total (R$)"
         })
-        df.reset_index(drop=False, inplace=True)
-        df.rename(columns={"index": "id"}, inplace=True)
         st.dataframe(df, use_container_width=True)
     else:
         st.info("Nenhum ingrediente encontrado com os filtros selecionados.")
+
 
 # Edição por ID
 elif menu == "Editar Ingrediente":
