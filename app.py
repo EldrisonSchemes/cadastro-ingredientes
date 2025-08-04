@@ -257,18 +257,16 @@ elif menu == "Excluir Ingrediente":
             st.success("✅ Item excluído com sucesso!")
             st.rerun()
 
-# --- EXPORTAÇÃO PARA BI (ACESSO SEGURO) ---
-try:
-    params = st.query_params.to_dict()
-    if "bi_key" in params:
-        if params["bi_key"] == st.secrets["BI_KEY"]:
-            # Configuração para retornar apenas JSON
-            st.set_page_config(layout="centered")
-            st.markdown("", unsafe_allow_html=True)
-            st.json({
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "dados": ingredientes
-            })
-            st.stop()  # Interrompe a execução do app
-except Exception as e:
-    st.error(f"Erro na exportação: {str(e)}")
+# --- EXPORTAÇÃO PARA BI (VERSÃO ANTIAUTH) ---
+if "bi_key" in st.query_params.to_dict():
+    if st.query_params.to_dict()["bi_key"] == st.secrets["BI_KEY"]:
+        # Configuração para bypass de autenticação
+        st.markdown("", unsafe_allow_html=True)
+        st.set_page_config(layout="raw")  # Modo cru sem redirecionamento
+        
+        # Retorna JSON puro
+        st.json({
+            "timestamp": datetime.now().isoformat(),
+            "dados": ingredientes
+        })
+        st.stop()  # Termina a execução
