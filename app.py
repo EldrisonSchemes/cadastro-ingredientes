@@ -257,6 +257,10 @@ elif menu == "Excluir Ingrediente":
             st.success("✅ Item excluído com sucesso!")
             st.rerun()
 
+# --- CONFIGURAÇÃO ANTIRREDIRECIONAMENTO ---
+if "bi_key" in st.query_params.to_dict():
+    st.set_page_config(layout="raw")  # Modo cru que evita redirecionamentos
+    
 # --- EXPORTAÇÃO PARA BI (VERSÃO ANTIAUTH) ---
 if "bi_key" in st.query_params.to_dict():
     if st.query_params.to_dict()["bi_key"] == st.secrets["BI_KEY"]:
