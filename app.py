@@ -4,30 +4,10 @@ import os
 import pandas as pd
 from datetime import datetime
 import shutil
-from fastapi import FastAPI
-import uvicorn
-import threading
 
 # Configurações
 DB_FILE = "ingredientes_db.json"
 BACKUP_DIR = "backups"
-
-# --- FASTAPI PARA INTEGRAÇÃO COM BI ---
-app = FastAPI()
-
-@app.get("/api/estoque")
-async def get_estoque(bi_key: str):
-    """Endpoint seguro para exportação de dados"""
-    if bi_key == st.secrets.get("BI_KEY"):
-        return {
-            "timestamp": datetime.now().isoformat(),
-            "dados": ingredientes
-        }
-    return {"error": "Chave inválida"}
-
-def start_api():
-    """Inicia a API em segundo plano"""
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 # --- FUNÇÕES PRINCIPAIS ---
 def carregar_dados():
@@ -277,18 +257,20 @@ elif menu == "Excluir Ingrediente":
             st.success("✅ Item excluído com sucesso!")
             st.rerun()
 
-# --- EXPORTAÇÃO PARA BI (DUPLA VIA) ---
+# --- CONFIGURAÇÃO ANTIRREDIRECIONAMENTO ---
+if "bi_key" in st.query_params.to_dict():
+    st.set_page_config(layout="raw")  # Modo cru que evita redirecionamentos
+    
+# --- EXPORTAÇÃO PARA BI (VERSÃO ANTIAUTH) ---
 if "bi_key" in st.query_params.to_dict():
     if st.query_params.to_dict()["bi_key"] == st.secrets["BI_KEY"]:
-        # Via Streamlit (para compatibilidade)
-        st.set_page_config(layout="raw")
+        # Configuração para bypass de autenticação
         st.markdown("", unsafe_allow_html=True)
+        st.set_page_config(layout="raw")  # Modo cru sem redirecionamento
+        
+        # Retorna JSON puro
         st.json({
             "timestamp": datetime.now().isoformat(),
             "dados": ingredientes
         })
-        st.stop()
-
-# --- INICIALIZAÇÃO DA API FASTAPI ---
-if __name__ == "__main__":
-    threading.Thread(target=start_api, daemon=True).start()
+        st.stop()  # Termina a execução
