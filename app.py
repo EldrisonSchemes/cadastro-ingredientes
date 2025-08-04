@@ -258,8 +258,8 @@ elif menu == "Excluir Ingrediente":
             st.rerun()
 
 # --- EXPORTAÇÃO PARA BI (ACESSO SEGURO) ---
-if "bi_key" in st.experimental_get_query_params():
-    if st.experimental_get_query_params()["bi_key"][0] == st.secrets["BI_KEY"]:
+if "bi_key" in st.query_params():
+    if st.query_params()["bi_key"][0] == st.secrets["BI_KEY"]:
         st.title("🔒 Dados para BI (Acesso Autorizado)")
         
         # Retorna os dados diretamente em formato JSON
