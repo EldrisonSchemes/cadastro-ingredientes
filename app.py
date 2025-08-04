@@ -256,3 +256,19 @@ elif menu == "Excluir Ingrediente":
             salvar_dados(ingredientes)
             st.success("✅ Item excluído com sucesso!")
             st.rerun()
+
+# --- EXPORTAÇÃO PARA BI (ACESSO SEGURO) ---
+if "bi_key" in st.experimental_get_query_params():
+    if st.experimental_get_query_params()["bi_key"][0] == st.secrets["BI_KEY"]:
+        st.title("🔒 Dados para BI (Acesso Autorizado)")
+        
+        # Retorna os dados diretamente em formato JSON
+        st.json({
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "dados": ingredientes
+        })
+    else:
+        st.error("❌ Chave de acesso inválida")
+else:
+    # Não mostra nada para usuários normais
+    pass
