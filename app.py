@@ -258,13 +258,17 @@ elif menu == "Excluir Ingrediente":
             st.rerun()
 
 # --- EXPORTAÇÃO PARA BI (ACESSO SEGURO) ---
-params = st.query_params()
-if "bi_key" in params:
-    if params["bi_key"][0] == st.secrets["BI_KEY"]:
-        st.set_page_config(layout="centered")
-        st.markdown("", unsafe_allow_html=True)
-        st.json({
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "dados": ingredientes
-        })
-        st.stop()
+try:
+    params = st.query_params.to_dict()
+    if "bi_key" in params:
+        if params["bi_key"] == st.secrets["BI_KEY"]:
+            # Configuração para retornar apenas JSON
+            st.set_page_config(layout="centered")
+            st.markdown("", unsafe_allow_html=True)
+            st.json({
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "dados": ingredientes
+            })
+            st.stop()  # Interrompe a execução do app
+except Exception as e:
+    st.error(f"Erro na exportação: {str(e)}")
